@@ -64,6 +64,11 @@ namespace graphics
             SDL_QueryTexture(m_Texture, nullptr, nullptr, &m_size.x, &m_size.y);
         }
 
+        SDL_Texture* GetTexture() const
+        {
+            return m_Texture;
+        }
+
         const vector2_t& GetSize() const
         {
             return m_size;

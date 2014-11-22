@@ -231,6 +231,9 @@
     <ClInclude Include="include\Emitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\BossEnemy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">

@@ -5,14 +5,14 @@
 
 class Enemy : public Entity
 {
+public:
     int m_SPEED = 3;
     int m_HEALTH = 100;
 
-public:
     Enemy(const graphics::Window& win,
           const Player& player,
           const string_t& type) :
-          Entity(win, type), m_HealthBar(win, "null"), m_player(player)
+          Entity(win, type), m_HealthBar(win, "null"), m_player(player), m_enabled(true)
     {
         int roll = rand() % 4;
         int x = -20, y = -20;
@@ -58,6 +58,18 @@ public:
         return this->IsDead();
     }
 
+    void Resize(const vector2_t& size)
+    {
+        Entity::Resize(size);
+        this->SetHealth(m_health);
+    }
+
+    void Move(const vector2_t& pos)
+    {
+        Entity::Move(pos); 
+        m_HealthBar.Move(vector2_t(pos.x, pos.y - 6));
+    }
+
     bool IsDead() const
     {
         return m_health <= 0;
@@ -65,6 +77,8 @@ public:
 
     virtual void Update()
     {
+        if (!m_enabled) return;
+
         int dx = 0, dy = 0;
 
         if (m_player.GetX() < this->GetX())
@@ -88,7 +102,7 @@ public:
         m_health = health;
 
         SDL_Rect fill = {
-            0, 0, 32 * (m_health / (float)m_HEALTH), 4
+            0, 0, m_Texture.GetWidth() * (m_health / (float)m_HEALTH), 4
         };
 
         SDL_Surface* surf = SDL_CreateRGBSurface(SDL_SWSURFACE, m_Texture.GetWidth(), 4, 32,
@@ -102,8 +116,17 @@ public:
         m_HealthBar.SetTexture(textPtr);
     }
 
-private:
+    unsigned GetHealth() const
+    {
+        return m_health;
+    }
+
+    void Enable()  { m_enabled = true; }
+    void Disable() { m_enabled = false; }
+
+protected:
     const Player& m_player;
     Entity m_HealthBar;
     int m_health;
+    bool m_enabled;
 };

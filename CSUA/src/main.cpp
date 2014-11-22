@@ -6,15 +6,20 @@
 #include "SDL2/SDL_ttf.h"
 #pragma comment(lib, "SDL2_ttf.lib")
 
+#include "SDL2/SDL_mixer.h"
+#pragma comment(lib, "SDL2_mixer.lib")
+
 #include "Window.h"
 #include "Texture.h"
 #include "Entity.h"
 #include "Player.h"
-#include "Enemy.h"
+#include "BossEnemy.h"
 #include "Emitter.h"
 
 std::map<string_t, string_t> Entity::s_ENTITY_TYPES {
     { "john",   "textures/john.png"     },
+    { "dan",    "textures/dan.png"      },
+    { "hilf", "textures/hilf.png"       },
     { "oski",   "textures/oski.png"     },
     { "player", "textures/player.png"   },
     { "bullet", "textures/bullet.png"   },
@@ -27,6 +32,11 @@ int main(int argc, char* argv[])
     static const int MAX_FPS = 60;
 
     TTF_Init();
+    IMG_Init(IMG_INIT_PNG);
+    Mix_Init(MIX_INIT_MP3);
+    Mix_OpenAudio(44000, MIX_DEFAULT_FORMAT, 2, 1024);
+    
+    printf("volume is %d\n", Mix_Volume(-1, -1));
 
     graphics::Window window;
     window.Init({ 800, 600 });
@@ -35,6 +45,8 @@ int main(int argc, char* argv[])
     Entity overlay(window, "null");
 
     background.Init();
+    background.Move(vector2_t(-10, -10));
+    background.Resize(vector2_t(850, 650));
 
     std::vector<Enemy*> enemies;
 
@@ -48,9 +60,6 @@ int main(int argc, char* argv[])
     uint32_t kill_time = 0;
     uint32_t kill_count = 0;
     uint32_t total_kills = 0;
-
-    bool show_double = false; 
-    bool show_triple = false;
 
     TTF_Font* font = TTF_OpenFont("comic.ttf", 20);
 
@@ -78,36 +87,75 @@ int main(int argc, char* argv[])
     MultiText.SetTexture(SurfaceToTexture(window, surf));
     MultiText.Move(vector2_t(300, 200));
 
-    SDL_Surface* overlaySurf = SDL_CreateRGBSurface(SDL_SWSURFACE, 900, 700, 32, 0, 0, 0, 0);
+    SDL_FreeSurface(surf);
+
+    SDL_Texture* overlayText = background.GetRawTexture();
+    SDL_SetTextureBlendMode(overlayText, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureAlphaMod(overlayText, 200);
+
+    Mix_Music* music = Mix_LoadMUS("skril.mp3");
+    Mix_PlayMusic(music, -1);
+    Mix_Volume(-1, 24);
+
+    Enemy* BossManPtr = new BossEnemy(window, player, "stanford");
+    Enemy& BossMan = *BossManPtr;
+    BossMan.m_HEALTH *= 10; 
+    BossMan.m_SPEED = 1;
+    BossMan.Move(vector2_t(1000, 200));
+    BossMan.Resize(vector2_t(200, 200));
+    BossMan.SetHealth(BossMan.m_HEALTH);
+    BossMan.Disable();
+
+    enemies.push_back(BossManPtr);
+
+    int time_till_build = 3745;
+    int time_till_insanity = 4535;
+    int count = 0;
+
+    int stage = 0;
+
+    char* ENEMY_SEED[] = {
+        "oski",
+        "john",
+        "hilf",
+        "dan"
+    };
 
     while (!quit)
     {
+        // printf("count: %d\n", count++);
+
+        time_till_insanity--;
+        time_till_build--;
+
         frame = SDL_GetTicks();
 
         while (SDL_PollEvent(&e) != 0)
         {
             if (e.type == SDL_QUIT)
                 quit = true;
-            
+
             player.HandleEvent(e);
         }
 
         if (rand() % 100 == 1 && enemies.size() <= 10)
         {
-            enemies.emplace_back(new Enemy(window, player, "oski"));
+            char* enemy = ENEMY_SEED[rand() % 4];
+            printf("loading %s\n", enemy);
+            enemies.emplace_back(new Enemy(window, player, enemy));
         }
 
         auto& bullets = player.GetBullets();
-        for (auto bit = bullets.begin(); bit != bullets.end(); )
+        for (auto bit = bullets.begin(); bit != bullets.end();)
         {
             auto& b = *(*bit);
             bool bkill = false;
 
-            for (auto it = enemies.begin(); it != enemies.end(); )
+            for (auto it = enemies.begin(); it != enemies.end();)
             {
                 auto& e = *(*it);
 
-                vector2_t pos = b.GetPosition(); 
+                vector2_t pos = b.GetPosition();
                 bool collides = e.Collides(pos);
 
                 if (collides)
@@ -120,7 +168,7 @@ int main(int argc, char* argv[])
                 {
                     it = enemies.erase(it);
                     particles.Explode(pos);
-                    clear_color = SDL_Color { rand() % 255, rand() % 255, rand() % 255 };
+
                     total_kills++;
                     ++kill_count;
                     kill_time = 0;
@@ -140,131 +188,139 @@ int main(int argc, char* argv[])
         {
             DoubleText.Resize(vector2_t(128, 32));
             TripleText.Resize(vector2_t(128, 32));
-            MultiText .Resize(vector2_t(128, 32));
+            MultiText.Resize(vector2_t(128, 32));
             kill_count = 0;
             kill_time = 0;
         }
 
-        if (kill_count >= 2)
+        if (time_till_build <= 0 && kill_count >= 2)
         {
-            clear_color = SDL_Color{ rand() % 255, rand() % 255, rand() % 255 };
+            clear_color = SDL_Color { rand() % 255, rand() % 255, rand() % 255 };
         }
 
         window.Clear(clear_color.r, clear_color.g, clear_color.b);
         background.Draw();
 
-        if (kill_count == 1)
+        //printf("tti: %d\n", time_till_insanity);
+
+        if (time_till_insanity <= 0)
         {
-            g_OFFSET_X = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
-            g_OFFSET_Y = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
-        }
-        else
-        {
-            g_OFFSET_X = 0;
-            g_OFFSET_Y = 0;
-        }
-        
-        if (kill_count == 2)
-        {
-            vector2_t old_pos = DoubleText.GetPosition();
+            BossMan.Enable();
 
-            DoubleText.Resize(vector2_t(
-                DoubleText.GetWidth() + 2,
-                DoubleText.GetHeight() + 2
-            ));
-            DoubleText.Draw();
+            if (kill_count == 1)
+            {
+                g_OFFSET_X = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
+                g_OFFSET_Y = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
+            }
+            else
+            {
+                g_OFFSET_X = 0;
+                g_OFFSET_Y = 0;
+            }
 
-            DoubleText.Adjust(vector2_t(
-                100 + (rand() % 300),
-                100 + (rand() % 200)));
-            DoubleText.Draw();
+            if (kill_count == 2)
+            {
+                vector2_t old_pos = DoubleText.GetPosition();
 
-            DoubleText.Adjust(vector2_t(
-                -100 - (rand() % 200),
-                100 + (rand() % 200)));
-            DoubleText.Draw();
+                DoubleText.Resize(vector2_t(
+                    DoubleText.GetWidth() + 2,
+                    DoubleText.GetHeight() + 2
+                    ));
+                DoubleText.Draw();
 
-            DoubleText.Adjust(vector2_t(
-                100 + (rand() % 200),
-                -100 - (rand() % 200)));
-            DoubleText.Draw();
+                DoubleText.Adjust(vector2_t(
+                    100 + (rand() % 300),
+                    100 + (rand() % 200)));
+                DoubleText.Draw();
 
-            DoubleText.Adjust(vector2_t(
-                -100 - (rand() % 200),
-                -100 - (rand() % 200)));
-            DoubleText.Draw();
+                DoubleText.Adjust(vector2_t(
+                    -100 - (rand() % 200),
+                    100 + (rand() % 200)));
+                DoubleText.Draw();
 
-            DoubleText.Move(old_pos);
-        }
-        else if (kill_count == 3)
-        {
-            vector2_t old_pos = TripleText.GetPosition();
+                DoubleText.Adjust(vector2_t(
+                    100 + (rand() % 200),
+                    -100 - (rand() % 200)));
+                DoubleText.Draw();
 
-            TripleText.Resize(vector2_t(
-                TripleText.GetWidth() + 2,
-                TripleText.GetHeight() + 2
-                ));
-            TripleText.Draw();
+                DoubleText.Adjust(vector2_t(
+                    -100 - (rand() % 200),
+                    -100 - (rand() % 200)));
+                DoubleText.Draw();
 
-            TripleText.Adjust(vector2_t(
-                100 + (rand() % 200),
-                100 + (rand() % 200)));
-            TripleText.Draw();
+                DoubleText.Move(old_pos);
+            }
+            else if (kill_count == 3)
+            {
+                vector2_t old_pos = TripleText.GetPosition();
 
-            TripleText.Adjust(vector2_t(
-                -100 - (rand() % 200),
-                100 + (rand() % 200)));
-            TripleText.Draw();
+                TripleText.Resize(vector2_t(
+                    TripleText.GetWidth() + 2,
+                    TripleText.GetHeight() + 2
+                    ));
+                TripleText.Draw();
 
-            TripleText.Adjust(vector2_t(
-                100 + (rand() % 200),
-                -100 - (rand() % 200)));
-            TripleText.Draw();
+                TripleText.Adjust(vector2_t(
+                    100 + (rand() % 200),
+                    100 + (rand() % 200)));
+                TripleText.Draw();
 
-            TripleText.Adjust(vector2_t(
-                -100 - (rand() % 200),
-                -100 - (rand() % 200)));
-            TripleText.Draw();
+                TripleText.Adjust(vector2_t(
+                    -100 - (rand() % 200),
+                    100 + (rand() % 200)));
+                TripleText.Draw();
 
-            TripleText.Move(old_pos);
-        }
-        else if (kill_count > 3)
-        {
-            vector2_t old_pos = MultiText.GetPosition();
+                TripleText.Adjust(vector2_t(
+                    100 + (rand() % 200),
+                    -100 - (rand() % 200)));
+                TripleText.Draw();
 
-            MultiText.Resize(vector2_t(
-                MultiText.GetWidth() + 2,
-                MultiText.GetHeight() + 2
-                ));
-            MultiText.Draw();
+                TripleText.Adjust(vector2_t(
+                    -100 - (rand() % 200),
+                    -100 - (rand() % 200)));
+                TripleText.Draw();
 
-            MultiText.Adjust(vector2_t(
-                100 + (rand() % 200),
-                100 + (rand() % 200)));
-            MultiText.Draw();
+                TripleText.Move(old_pos);
+            }
+            else if (kill_count > 3)
+            {
+                vector2_t old_pos = MultiText.GetPosition();
 
-            MultiText.Adjust(vector2_t(
-                -100 - (rand() % 200),
-                100 + (rand() % 200)));
-            MultiText.Draw();
+                MultiText.Resize(vector2_t(
+                    MultiText.GetWidth() + 2,
+                    MultiText.GetHeight() + 2
+                    ));
+                MultiText.Draw();
 
-            MultiText.Adjust(vector2_t(
-                100 + (rand() % 200),
-                -100 - (rand() % 200)));
-            MultiText.Draw();
+                MultiText.Adjust(vector2_t(
+                    100 + (rand() % 200),
+                    100 + (rand() % 200)));
+                MultiText.Draw();
 
-            MultiText.Adjust(vector2_t(
-                -100 - (rand() % 200),
-                -100 - (rand() % 200)));
-            MultiText.Draw();
+                MultiText.Adjust(vector2_t(
+                    -100 - (rand() % 200),
+                    100 + (rand() % 200)));
+                MultiText.Draw();
 
-            MultiText.Move(old_pos);
+                MultiText.Adjust(vector2_t(
+                    100 + (rand() % 200),
+                    -100 - (rand() % 200)));
+                MultiText.Draw();
+
+                MultiText.Adjust(vector2_t(
+                    -100 - (rand() % 200),
+                    -100 - (rand() % 200)));
+                MultiText.Draw();
+
+                MultiText.Move(old_pos);
+            }
         }
 
         player.Update();
 
         for (auto& i : enemies)
             i->Update();
+        BossMan.Update();
 
         particles.Update();
         window.Display();

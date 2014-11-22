@@ -4,61 +4,6 @@
 #include "Window.h"
 #include "Texture.h"
 
-class Primitive
-{
-public:
-    Primitive(const graphics::Window& win) : m_Window(win), m_Data(nullptr) {}
-    ~Primitive()
-    {
-        if (m_Data)
-        {
-            SDL_FreeSurface(m_Data);
-        }
-    }
-
-    template<typename T>
-    void Adjust(const Vector2<T>& velocity)
-    {
-        m_Position.x += velocity.x;
-        m_Position.y += velocity.y;
-    }
-
-    virtual void Move(const vector2_t& pos)
-    {
-        m_Position = pos;
-    }
-
-    bool Draw() const
-    {
-        if (!m_Data) return false;
-
-        SDL_Rect dst = {
-            m_Data->w, m_Data->h,
-            m_Position.x, m_Position.y
-        };
-
-        SDL_Surface* surf = SDL_GetWindowSurface(m_Window.GetWindow());
-        SDL_BlitSurface(m_Data, nullptr, surf, &dst);
-        SDL_UpdateWindowSurface(m_Window.GetWindow());
-        return true;
-    }
-
-    SDL_Surface* GetSurface() const
-    {
-        return m_Data;
-    }
-
-    void SetSurface(SDL_Surface* surf)
-    {
-        m_Data = surf;
-    }
-
-private:
-    const graphics::Window& m_Window;
-    SDL_Surface* m_Data;
-    vector2_t m_Position;
-};
-
 class Entity
 {
     static std::map<string_t, string_t> s_ENTITY_TYPES;
@@ -81,12 +26,12 @@ public:
         m_Position.y += velocity.y;
     }
 
-    void Move(const vector2_t& pos)
+    virtual void Move(const vector2_t& pos)
     {
         m_Position = pos;
     }
 
-    void Resize(const vector2_t& size)
+    virtual void Resize(const vector2_t& size)
     {
         m_Texture.Resize(size);
     }
@@ -121,7 +66,7 @@ public:
             m_Position.y + m_Texture.GetHeight() / 2
         );
     }
-
+    
     unsigned GetWidth()  const { return m_Texture.GetWidth();  }
     unsigned GetHeight() const { return m_Texture.GetHeight(); }
 
@@ -129,6 +74,10 @@ public:
     const int GetX() const { return this->GetPosition().x; }
     const int GetY() const { return this->GetPosition().y; }
     const graphics::Window& GetWindow() const { return m_Texture.GetWindow(); }
+    SDL_Texture* GetRawTexture() const
+    {
+        return m_Texture.GetTexture();
+    }
 
 protected:
     graphics::Texture m_Texture;

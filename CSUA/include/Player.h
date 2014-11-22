@@ -7,7 +7,7 @@
 
 class Player
 {
-    int SPEED = 5;
+    int SPEED = 10;
     unsigned m_SHOT_DELAY = 1;
     unsigned m_DAMAGE = 25;
 
@@ -22,6 +22,7 @@ public:
     {
         m_Sprite.Init();
         m_state = PlayerStates::e_MOVING;
+        m_Sprite.Move(vector2_t(375, 275));
     }
 
     ~Player()

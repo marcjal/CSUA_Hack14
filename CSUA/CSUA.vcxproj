@@ -83,6 +83,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\BossEnemy.h" />
     <ClInclude Include="include\Bullet.h" />
     <ClInclude Include="include\Emitter.h" />
     <ClInclude Include="include\Enemy.h" />
