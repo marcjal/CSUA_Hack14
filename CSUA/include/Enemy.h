@@ -8,11 +8,13 @@ class Enemy : public Entity
 public:
     int m_SPEED = 3;
     int m_HEALTH = 100;
+    string_t m_enemy_type;
 
     Enemy(const graphics::Window& win,
           const Player& player,
           const string_t& type) :
-          Entity(win, type), m_HealthBar(win, "null"), m_player(player), m_enabled(true)
+          Entity(win, type), m_HealthBar(win, "null"),
+          m_player(player), m_enabled(true), m_enemy_type(type)
     {
         int roll = rand() % 4;
         int x = -20, y = -20;
@@ -79,16 +81,20 @@ public:
     {
         if (!m_enabled) return;
 
+        vector2_t target = (m_target.x == 0) ?
+                           vector2_t(m_player.GetX(), m_player.GetY()) :
+                           m_target;
+
         int dx = 0, dy = 0;
 
-        if (m_player.GetX() < this->GetX())
+        if (target.x < this->GetX())
             dx = -m_SPEED;
-        else if (m_player.GetX() > this->GetX())
+        else if (target.x > this->GetX())
             dx = +m_SPEED;
 
-        if (m_player.GetY() < this->GetY())
+        if (target.y < this->GetY())
             dy = -m_SPEED;
-        else if (m_player.GetY() > this->GetY())
+        else if (target.y > this->GetY())
             dy = +m_SPEED;
 
         this->Adjust(vector2_t(dx, dy));
@@ -101,10 +107,9 @@ public:
     {
         if (!m_enabled) return;
 
-        if (m_type == "john" && rand() % 50 == 1 &&
-            (m_player.GetX() * m_player.GetX() +
-             m_player.GetY() * m_player.GetY()) < 40000)
+        if (m_type == "john" && rand() % 100 == 1)
         {
+            printf("throwing parenthesis.\n");
             Bullet* bullet = new Bullet(m_Texture.GetWindow(), "scheme");
             bullet->ShootAt(this->GetPosition(), vector2_t(m_player.GetX(), m_player.GetY()));
             bullets.push_back(bullet);
@@ -147,6 +152,11 @@ public:
         m_HealthBar.SetTexture(textPtr);
     }
 
+    void SetTarget(const vector2_t& v)
+    {
+        m_target = v;
+    }
+
     unsigned GetHealth() const
     {
         return m_health;
@@ -158,6 +168,7 @@ public:
 protected:
     const Player& m_player;
     Entity m_HealthBar;
+    vector2_t m_target;
     int m_health;
     bool m_enabled;
 };

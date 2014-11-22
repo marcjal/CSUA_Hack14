@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #include <ctime>
+#include <sstream>
 
 #include "SDL2/SDL_ttf.h"
 #pragma comment(lib, "SDL2_ttf.lib")
@@ -28,7 +29,8 @@ std::map<string_t, string_t> Entity::s_ENTITY_TYPES {
     { "sf",     "textures/stanford.png" },
     { "multi",  "textures/gun.png"      },
     { "explode","textures/explode.png"  },
-    { "bomb",   "textures/bomb.png"     }
+    { "bomb",   "textures/bomb.png"     },
+    { "tree",   "textures/tree.png"     }
 };
 
 void spawn_enemy(const graphics::Window& window,
@@ -44,6 +46,31 @@ void spawn_enemy(const graphics::Window& window,
 struct Level
 {
     unsigned to_spawn;
+};
+
+class FontStream
+{
+public:
+    template<typename T>
+    FontStream& operator<<(const T& data)
+    {
+        m_stream << data;
+        return (*this);
+    }
+
+    SDL_Texture* Render(TTF_Font* font, const graphics::Window& window, SDL_Color color)
+    {
+        SDL_Surface* surf = TTF_RenderText_Blended(font, m_stream.str().c_str(), color);
+        return SurfaceToTexture(window, surf);
+    }
+
+    void Clear()
+    {
+        m_stream.str(std::string());
+    }
+
+private:
+    std::stringstream m_stream;
 };
 
 int main(int argc, char* argv[])
@@ -80,8 +107,23 @@ int main(int argc, char* argv[])
     uint32_t kill_count = 0;
     uint32_t total_kills = 0;
 
-    TTF_Font* font  = TTF_OpenFont("comic.ttf", 20);
-    TTF_Font* uiFont= TTF_OpenFont("comic.ttf", 18);
+    TTF_Font* font = TTF_OpenFont("comic.ttf", 20);
+    TTF_Font* uiFont = TTF_OpenFont("comic.ttf", 18);
+
+    const unsigned int UI_LINE_HEIGHT = TTF_FontHeight(uiFont);
+
+    Entity powerupUI(window, "null");
+    Entity killUI(window, "null");
+
+    FontStream fs;
+
+    fs << "PowerUps     0 bombs | no upgrades";
+    powerupUI.SetTexture(fs.Render(uiFont, window, { 255, 255, 255 }));
+    fs.Clear();
+
+    fs << "0 kills";
+    killUI.SetTexture(fs.Render(uiFont, window, { 255, 255, 255 }));
+    fs.Clear();
 
     SDL_Surface* surf = TTF_RenderText_Blended(font, "DOUBLE KILL", {
         rand() % 255, rand() % 255, rand() % 255
@@ -119,18 +161,19 @@ int main(int argc, char* argv[])
 
     printf("volume is %d\n", Mix_Volume(-1, -1));
 
-    Enemy* BossManPtr = new BossEnemy(window, player, "sf");
-    Enemy& BossMan = *BossManPtr;
-    BossMan.m_HEALTH *= 10;
+    BossEnemy* BossManPtr = new BossEnemy(window, player, "sf");
+    BossEnemy& BossMan = *BossManPtr;
+    BossMan.m_HEALTH *= 50;
     BossMan.m_SPEED = 1;
     BossMan.Move(vector2_t(800, 200));
     BossMan.Resize(vector2_t(200, 200));
     BossMan.SetHealth(BossMan.m_HEALTH);
+    BossMan.SetSwarm(enemies);
     BossMan.Disable();
 
     enemies.push_back(BossManPtr);
 
-    int time_till_build = 4000;
+    int time_till_build = 3869;
     int time_till_insanity = 4700;
     int count = 0;
 
@@ -143,12 +186,13 @@ int main(int argc, char* argv[])
 
     std::map<PowerUp, Entity*> POWER_UPS = {
         { PowerUp::MULTI_SHOT,  new Entity(window, "multi") },
-        { PowerUp::BOMB,        new Entity(window, "bomb")  },
-        { PowerUp::BULLET_HELL, new Entity(window, "hell")  }
+        { PowerUp::BOMB,        new Entity(window, "bomb")  }
     };
     
     std::vector<Level> levels = {
         { 15 },
+        { 5  },
+        { 4  },
         { -1 }
     };
 
@@ -171,6 +215,7 @@ int main(int argc, char* argv[])
     while (!quit)
     {
         printf("frame count: %d\n", count);
+        printf("enemies left: %d\n", enemies_left);
 
         ++count;
         time_till_insanity--;
@@ -195,17 +240,19 @@ int main(int argc, char* argv[])
         }
 
         // spawn enemies
-        if (enemies_left < 0 && levels[stage].to_spawn != -1)
+        bool trigger = (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_G] != 0);
+        if (enemies_left <= 0 && stage >= 0 && stage < levels.size() && levels[stage].to_spawn != -1)
         {
             printf("upping stage\n");
             enemies_spawned = 0;
-            enemies_left = levels[stage++].to_spawn;
+            enemies_left = levels[++stage].to_spawn;
+            trigger = true;
         }
         
         switch (stage)
         {
         case 0:
-            if (enemies_spawned < levels[0].to_spawn && frame % 180 == 0)
+            if (enemies_spawned < levels[0].to_spawn && (trigger || frame % 120 == 0))
             {
                 spawn_enemy(window, player, enemies, "oski", -10, -10);
                 spawn_enemy(window, player, enemies, "oski", 810, -10);
@@ -213,32 +260,85 @@ int main(int argc, char* argv[])
                 spawn_enemy(window, player, enemies, "oski", -10, 610);
                 enemies_spawned += 4;
             }
+            break;
+        
+        // hilf rush
+        case 1:
+            if (enemies_spawned < levels[1].to_spawn && (trigger || frame % 180 == 0))
+            {
+                spawn_enemy(window, player, enemies, "hilf", 25,  -10);
+                spawn_enemy(window, player, enemies, "hilf", 225, -30);
+                spawn_enemy(window, player, enemies, "hilf", 425, -10);
+                spawn_enemy(window, player, enemies, "hilf", 625, -20);
+                enemies_spawned += 4;
+            }
 
             break;
 
-        //case 1:
-        //    stage++;
-        //    break;
+        // john rekt
+        case 2:
+            if (enemies_spawned < levels[2].to_spawn && (trigger || frame % 180 == 0))
+            {
+                switch (enemies_spawned)
+                {
+                case 0:
+                    spawn_enemy(window, player, enemies, "john", -20, 275);
+                    enemies_spawned++;
+                    break;
 
-        //    if (enemies_spawned < levels[1].to_spawn && frame % 180 == 0)
-        //    {
-        //        spawn_enemy(window, player, enemies, "oski", -10, -10);
-        //        spawn_enemy(window, player, enemies, "oski", 810, -10);
-        //        spawn_enemy(window, player, enemies, "oski", 810, 610);
-        //        spawn_enemy(window, player, enemies, "oski", -10, 610);
-        //        enemies_spawned += 4;
-        //    }
+                case 1:
+                    spawn_enemy(window, player, enemies, "john", 400, -20);
+                    spawn_enemy(window, player, enemies, "john", 400, 650);
+                    enemies_spawned += 2; 
+                    break;
 
-        //    break;
+                case 3:
+                    spawn_enemy(window, player, enemies, "john", -20, 275);
+                    enemies_spawned++;
+                    break;
+
+                default:
+                    spawn_enemy(window, player, enemies, "john", 625, -20);
+                    enemies_spawned++; 
+                    break;
+                }
+            }
+
+            break;
+
+        // stan4rd
+        case 69:
+            for (int i = 0; i < 600; i += 50)
+            {
+                spawn_enemy(window, player, enemies, "tree", -10, i);
+                spawn_enemy(window, player, enemies, "tree", 810, i + 25);
+            }
+            stage = 70;
+
+            break;
+
+        // hard
+        case 70:
+            if (rand() % 60 == 1 && enemies.size() <= 10)
+            {
+                char* enemy = ENEMY_SEED[rand() % 4];
+                enemies.emplace_back(new Enemy(window, player, enemy));
+            }
+            break;
 
         default:
             if (rand() % 100 == 1 && enemies.size() <= 10)
             {
                 char* enemy = ENEMY_SEED[rand() % 4];
-                printf("loading %s\n", enemy);
                 enemies.emplace_back(new Enemy(window, player, enemy));
             }
             break;
+        }
+
+        if (trigger)
+        {
+            char* enemy = ENEMY_SEED[rand() % 4];
+            enemies.emplace_back(new Enemy(window, player, enemy));
         }
 
         auto& bullets = player.GetBullets();
@@ -266,6 +366,7 @@ int main(int argc, char* argv[])
                     if (&e == BossManPtr)
                     {
                         particles.Explode(center, 500);
+                        stage = 69;
                     }
 
                     it = enemies.erase(it);
@@ -331,7 +432,7 @@ int main(int argc, char* argv[])
 
         if (rand() % 500 == 1 && currentPowerup == nullptr)
         {
-            currentPowerupType = static_cast<PowerUp>(rand() % 3);
+            currentPowerupType = static_cast<PowerUp>(rand() % (static_cast<int>(PowerUp::NONE)));
             currentPowerup = POWER_UPS[currentPowerupType];
             vector2_t pos(100 + (rand() % 600), 100 + (rand() % 400));
             printf("powerup spawned: %d @ %d,%d\n",
@@ -457,6 +558,12 @@ int main(int argc, char* argv[])
         for (auto& i : enemies)
             i->Update(parentheses);
 
+        for (auto& i : parentheses)
+        {
+            i->Update();
+            i->Draw();
+        }
+
         particles.Update();
 
         if (currentPowerup)
@@ -475,7 +582,6 @@ int main(int argc, char* argv[])
                 exploding = false;
             }
             
-
             for (auto it = enemies.begin(); it != enemies.end();)
             {
                 Enemy* i = *it;
@@ -496,6 +602,19 @@ int main(int argc, char* argv[])
 
             explosion.Draw();
         }
+
+        fs << "PowerUps     " << player.PowerupCount(PowerUp::BOMB) << " bombs | ";
+        if (player.HasPowerup(PowerUp::MULTI_SHOT))
+            fs << "multi-shot";
+        powerupUI.SetTexture(fs.Render(uiFont, window, { 255, 255, 255 }));
+        fs.Clear();
+        powerupUI.Draw();
+
+        fs << total_kills << " kills";
+        killUI.SetTexture(fs.Render(uiFont, window, { 255, 255, 255 }));
+        fs.Clear();
+        killUI.Move(vector2_t(0, UI_LINE_HEIGHT));
+        killUI.Draw();
 
         window.Display();
 

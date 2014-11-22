@@ -9,7 +9,6 @@
 enum class PowerUp
 {
     MULTI_SHOT = 0,
-    BULLET_HELL,
     BOMB,
     NONE
 };
@@ -152,6 +151,12 @@ public:
 
     bool Update()
     {
+        if (this->HasPowerup(PowerUp::MULTI_SHOT) && rand() % 1000 == 50)
+        {
+            while (this->HasPowerup(PowerUp::MULTI_SHOT))
+                this->RemovePowerup(PowerUp::MULTI_SHOT);
+        }
+
         if (m_state == PlayerStates::e_SHOOTING && m_delay++ > m_SHOT_DELAY)
         {
             int x = 0, y = 0;
@@ -227,6 +232,17 @@ public:
                 break;
             }
         }
+    }
+
+    unsigned PowerupCount(const PowerUp& p)
+    {
+        unsigned count = 0;
+        for (auto& i : m_Powerups)
+        {
+            if (i == p) ++count;
+        }
+
+        return count;
     }
 
     const int GetX() const { return m_Sprite.GetPosition().x; }

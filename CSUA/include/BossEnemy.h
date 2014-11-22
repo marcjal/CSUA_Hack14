@@ -17,6 +17,44 @@ public:
 
     virtual void Update()
     {
+        int incr = 0;
+        vector2_t last_john;
+        bool vert = false;
+
+        for (auto& i : *m_Swarm)
+        {
+            Enemy& e = *i;
+            if (e.m_enemy_type == "john")
+            {
+                if (last_john.x == 0)
+                {
+                    last_john.x = m_player.GetX() - 100;
+                    last_john.y = m_player.GetY() - 100;
+
+                    e.SetTarget(last_john);
+                }
+                else
+                {
+                    last_john.x += 100;
+                    if (last_john.x > 700)
+                    {
+                        vert = true;
+                    }
+
+                    if (vert)
+                    {
+                        last_john.y += 100;
+                        if (last_john.y >= m_player.GetY() + 100)
+                        {
+                            vert = false;
+                        }
+                    }
+
+                    e.SetTarget(last_john);
+                }
+            }
+        }
+        
         if (!m_enabled) return;
 
         bool done = false;
