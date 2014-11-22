@@ -26,6 +26,21 @@ std::map<string_t, string_t> Entity::s_ENTITY_TYPES {
     { "bg",     "textures/bg.png"       }  
 };
 
+void spawn_enemy(const graphics::Window& window,
+                 const Player& player,
+                 std::list<Enemy*>& enemies, const string_t& type, int x, int y)
+{
+    Enemy* newest = new Enemy(window, player, type);
+    newest->Move(vector2_t(x, y));
+    newest->SetHealth(newest->m_HEALTH);
+    enemies.push_back(newest);
+}
+
+struct Level
+{
+    unsigned to_spawn;
+};
+
 int main(int argc, char* argv[])
 {
     srand(static_cast<unsigned>(time(nullptr)));
@@ -48,7 +63,7 @@ int main(int argc, char* argv[])
     background.Move(vector2_t(-10, -10));
     background.Resize(vector2_t(850, 650));
 
-    std::vector<Enemy*> enemies;
+    std::list<Enemy*> enemies;
 
     ParticleEmitter particles(window);
 
@@ -112,14 +127,18 @@ int main(int argc, char* argv[])
     int time_till_insanity = 4535;
     int count = 0;
 
-    int stage = 0;
-
     char* ENEMY_SEED[] = {
         "oski",
         "john",
         "hilf",
         "dan"
     };
+    
+    Level Level1 = { 15 };
+    
+    int stage = 0;
+    int enemies_left = Level1.to_spawn;
+    int enemies_spawned = 0;
 
     while (!quit)
     {
@@ -138,12 +157,48 @@ int main(int argc, char* argv[])
             player.HandleEvent(e);
         }
 
-        if (rand() % 100 == 1 && enemies.size() <= 10)
+        // spawn enemies
+        if (enemies_left < 0)
+        {
+            printf("upping stage\n");
+            stage++;
+            enemies_spawned = 0;
+            break;
+        }
+        
+        switch (stage)
+        {
+        case 0:
+            if (enemies_spawned < Level1.to_spawn && frame % 180 == 0)
+            {
+                spawn_enemy(window, player, enemies, "oski", -10, -10);
+                spawn_enemy(window, player, enemies, "oski", 810, -10);
+                spawn_enemy(window, player, enemies, "oski", 810, 610);
+                spawn_enemy(window, player, enemies, "oski", -10, 610);
+                enemies_spawned += 4;
+            }
+
+            break;
+
+        case 1:
+            if (enemies_spawned < Level1.to_spawn && frame % 180 == 0)
+            {
+                spawn_enemy(window, player, enemies, "oski", -10, -10);
+                spawn_enemy(window, player, enemies, "oski", 810, -10);
+                spawn_enemy(window, player, enemies, "oski", 810, 610);
+                spawn_enemy(window, player, enemies, "oski", -10, 610);
+                enemies_spawned += 4;
+            }
+
+            break;
+        }
+
+        /*if (rand() % 100 == 1 && enemies.size() <= 10)
         {
             char* enemy = ENEMY_SEED[rand() % 4];
             printf("loading %s\n", enemy);
             enemies.emplace_back(new Enemy(window, player, enemy));
-        }
+        }*/
 
         auto& bullets = player.GetBullets();
         for (auto bit = bullets.begin(); bit != bullets.end();)
@@ -172,6 +227,7 @@ int main(int argc, char* argv[])
                     total_kills++;
                     ++kill_count;
                     kill_time = 0;
+                    --enemies_left;
                 }
                 else
                 {
