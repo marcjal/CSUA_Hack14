@@ -4,15 +4,16 @@
 #pragma comment(lib, "SDL2.lib")
 #pragma comment(lib, "SDL2main.lib")
 
-struct vector2i_t
+template<typename T>
+struct Vector2
 {
-    int x, y;
-    vector2i_t() : x(0), y(0) {}
-    vector2i_t(int x, int y) : x(x), y(y) {}
+    T x, y;
+    Vector2() : x((T)0), y((T)0) {}
+    Vector2(const T& x, const T& y) : x(x), y(y) {}
 };
 
-typedef vector2i_t vector2_t;
-
+typedef Vector2<int> vector2_t;
+typedef Vector2<float> vector2f_t;
 typedef std::string string_t;
 
 namespace graphics

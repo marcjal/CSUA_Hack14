@@ -81,6 +81,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\Bullet.h" />
     <ClInclude Include="include\Entity.h" />
     <ClInclude Include="include\Player.h" />
     <ClInclude Include="include\SDL2\begin_code.h" />

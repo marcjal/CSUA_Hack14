@@ -10,7 +10,8 @@
 std::map<string_t, string_t> Entity::s_ENTITY_TYPES {
     { "john",   "textures/john.png"     },
     { "oski",   "textures/oski.png"     },
-    { "player", "textures/player.png"   }
+    { "player", "textures/player.png"   },
+    { "bullet", "textures/bullet.png"   }
 };
 
 int main(int argc, char* argv[])
@@ -33,6 +34,10 @@ int main(int argc, char* argv[])
             if (e.type == SDL_QUIT)
             {
                 quit = true;
+            }
+            else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT)
+            {
+                player.Shoot({ e.button.x, e.button.y });
             }
 
             player.HandleEvent(e);

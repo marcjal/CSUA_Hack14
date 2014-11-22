@@ -11,15 +11,15 @@ class Entity
 public:
     Entity(const graphics::Window& window,
            const string_t& type) :
-           m_type(type), m_Texture(window)
-    {}
+           m_type(type), m_Texture(window) {}
 
     bool Init()
     {
         return m_Texture.Init(s_ENTITY_TYPES[m_type]);
     }
 
-    void Adjust(const vector2_t& velocity)
+    template<typename T>
+    void Adjust(const Vector2<T>& velocity)
     {
         m_Position.x += velocity.x;
         m_Position.y += velocity.y;
@@ -34,6 +34,17 @@ public:
     {
         return m_Texture.DrawAt(m_Position);
     }
+
+    vector2_t GetCenter() const
+    {
+        return vector2_t(
+            m_Position.x + m_Texture.GetWidth() / 2,
+            m_Position.y + m_Texture.GetHeight() / 2
+        );
+    }
+
+    const vector2_t& GetPosition() const { return m_Position; }
+    const graphics::Window& GetWindow() const { return m_Texture.GetWindow(); }
 
 private:
     graphics::Texture m_Texture;

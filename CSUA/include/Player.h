@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Entity.h"
+#include "Bullet.h"
 
 class Player
 {
@@ -13,7 +14,12 @@ public:
     }
 
     ~Player()
-    {}
+    {
+        for (auto& i : m_Bullets)
+        {
+            delete i;
+        }
+    }
 
     bool HandleEvent(const SDL_Event& evt)
     {
@@ -75,13 +81,27 @@ public:
         m_Sprite.Move(pos);
     }
 
+    void Shoot(const vector2_t& pos)
+    {
+        Bullet* bullet = new Bullet(m_Sprite.GetWindow());
+        bullet->ShootAt(m_Sprite.GetCenter(), pos);
+        printf("Shooting from %d,%d at %d,%d\n", m_Sprite.GetPosition().x, m_Sprite.GetPosition().y, pos.x, pos.y);
+        m_Bullets.emplace_back(bullet);
+    }
+
     bool Update()
     {
         m_Sprite.Adjust(m_velocity);
+        for (auto& i : m_Bullets)
+        {
+            i->Update();
+            i->Draw();
+        }
         return m_Sprite.Draw();
     }
 
 private:
+    std::vector<Bullet*> m_Bullets;
     Entity m_Sprite;
     vector2_t m_velocity;
 };

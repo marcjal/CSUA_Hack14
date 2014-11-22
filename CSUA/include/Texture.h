@@ -41,6 +41,8 @@ namespace graphics
         unsigned GetWidth()  const { return m_size.x; }
         unsigned GetHeight() const { return m_size.y; }
 
+        const graphics::Window& GetWindow() const { return m_Window; }
+
     private:
         const graphics::Window& m_Window;
         SDL_Texture* m_Texture;
