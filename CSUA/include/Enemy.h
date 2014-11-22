@@ -85,6 +85,37 @@ public:
             dx = -m_SPEED;
         else if (m_player.GetX() > this->GetX())
             dx = +m_SPEED;
+
+        if (m_player.GetY() < this->GetY())
+            dy = -m_SPEED;
+        else if (m_player.GetY() > this->GetY())
+            dy = +m_SPEED;
+
+        this->Adjust(vector2_t(dx, dy));
+        m_HealthBar.Adjust(vector2_t(dx, dy));
+        this->Draw();
+        m_HealthBar.Draw();
+    }
+
+    virtual void Update(std::list<Bullet*>& bullets)
+    {
+        if (!m_enabled) return;
+
+        if (m_type == "john" && rand() % 50 == 1 &&
+            (m_player.GetX() * m_player.GetX() +
+             m_player.GetY() * m_player.GetY()) < 40000)
+        {
+            Bullet* bullet = new Bullet(m_Texture.GetWindow(), "scheme");
+            bullet->ShootAt(this->GetPosition(), vector2_t(m_player.GetX(), m_player.GetY()));
+            bullets.push_back(bullet);
+        }
+
+        int dx = 0, dy = 0;
+
+        if (m_player.GetX() < this->GetX())
+            dx = -m_SPEED;
+        else if (m_player.GetX() > this->GetX())
+            dx = +m_SPEED;
         
         if (m_player.GetY() < this->GetY())
             dy = -m_SPEED;

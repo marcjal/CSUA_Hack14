@@ -19,11 +19,16 @@
 std::map<string_t, string_t> Entity::s_ENTITY_TYPES {
     { "john",   "textures/john.png"     },
     { "dan",    "textures/dan.png"      },
-    { "hilf", "textures/hilf.png"       },
+    { "hilf",   "textures/hilf.png"     },
     { "oski",   "textures/oski.png"     },
     { "player", "textures/player.png"   },
     { "bullet", "textures/bullet.png"   },
-    { "bg",     "textures/bg.png"       }  
+    { "scheme", "textures/parens.png"   },
+    { "bg",     "textures/bg.png"       },  
+    { "sf",     "textures/stanford.png" },
+    { "multi",  "textures/gun.png"      },
+    { "explode","textures/explode.png"  },
+    { "bomb",   "textures/bomb.png"     }
 };
 
 void spawn_enemy(const graphics::Window& window,
@@ -50,8 +55,6 @@ int main(int argc, char* argv[])
     IMG_Init(IMG_INIT_PNG);
     Mix_Init(MIX_INIT_MP3);
     Mix_OpenAudio(44000, MIX_DEFAULT_FORMAT, 2, 1024);
-    
-    printf("volume is %d\n", Mix_Volume(-1, -1));
 
     graphics::Window window;
     window.Init({ 800, 600 });
@@ -64,6 +67,7 @@ int main(int argc, char* argv[])
     background.Resize(vector2_t(850, 650));
 
     std::list<Enemy*> enemies;
+    std::list<Bullet*> parentheses;
 
     ParticleEmitter particles(window);
 
@@ -112,9 +116,11 @@ int main(int argc, char* argv[])
     Mix_PlayMusic(music, -1);
     Mix_Volume(-1, 24);
 
-    Enemy* BossManPtr = new BossEnemy(window, player, "stanford");
+    printf("volume is %d\n", Mix_Volume(-1, -1));
+
+    Enemy* BossManPtr = new BossEnemy(window, player, "sf");
     Enemy& BossMan = *BossManPtr;
-    BossMan.m_HEALTH *= 10; 
+    BossMan.m_HEALTH *= 10;
     BossMan.m_SPEED = 1;
     BossMan.Move(vector2_t(1000, 200));
     BossMan.Resize(vector2_t(200, 200));
@@ -123,8 +129,8 @@ int main(int argc, char* argv[])
 
     enemies.push_back(BossManPtr);
 
-    int time_till_build = 3745;
-    int time_till_insanity = 4535;
+    int time_till_build = 3650;
+    int time_till_insanity = 4700;
     int count = 0;
 
     char* ENEMY_SEED[] = {
@@ -133,17 +139,39 @@ int main(int argc, char* argv[])
         "hilf",
         "dan"
     };
+
+    std::map<PowerUp, Entity*> POWER_UPS = {
+        { PowerUp::MULTI_SHOT,  new Entity(window, "multi") },
+        { PowerUp::BOMB,        new Entity(window, "bomb")  },
+        { PowerUp::BULLET_HELL, new Entity(window, "hell")  }
+    };
     
-    Level Level1 = { 15 };
-    
+    std::vector<Level> levels = {
+        { 15 },
+        { -1 }
+    };
+
     int stage = 0;
-    int enemies_left = Level1.to_spawn;
+    int enemies_left = levels[0].to_spawn;
     int enemies_spawned = 0;
+
+    for (auto& i : POWER_UPS)
+    {
+        i.second->Init();
+    }
+
+    Entity explosion(window, "explode");
+    explosion.Init();
+    bool exploding = false;
+
+    Entity* currentPowerup = nullptr;
+    PowerUp currentPowerupType = PowerUp::NONE;
 
     while (!quit)
     {
-        // printf("count: %d\n", count++);
+        printf("frame count: %d\n", count);
 
+        ++count;
         time_till_insanity--;
         time_till_build--;
 
@@ -154,22 +182,37 @@ int main(int argc, char* argv[])
             if (e.type == SDL_QUIT)
                 quit = true;
 
-            player.HandleEvent(e);
+            int retval = player.HandleEvent(e);
+
+            // bomb triggered
+            if (retval == 1)
+            {
+                exploding = true;
+                explosion.Resize(vector2_t(64, 64));
+                explosion.Move(vector2_t(player.GetX() + 32, player.GetY() + 30));
+
+                for (auto& i : enemies)
+                {
+                    particles.Explode(i->GetCenter());
+                    //delete i;
+                }
+
+                enemies.clear();
+            }
         }
 
         // spawn enemies
-        if (enemies_left < 0)
+        if (enemies_left < 0 && levels[stage].to_spawn != -1)
         {
             printf("upping stage\n");
-            stage++;
             enemies_spawned = 0;
-            break;
+            enemies_left = levels[stage++].to_spawn;
         }
         
         switch (stage)
         {
         case 0:
-            if (enemies_spawned < Level1.to_spawn && frame % 180 == 0)
+            if (enemies_spawned < levels[0].to_spawn && frame % 180 == 0)
             {
                 spawn_enemy(window, player, enemies, "oski", -10, -10);
                 spawn_enemy(window, player, enemies, "oski", 810, -10);
@@ -180,25 +223,30 @@ int main(int argc, char* argv[])
 
             break;
 
-        case 1:
-            if (enemies_spawned < Level1.to_spawn && frame % 180 == 0)
-            {
-                spawn_enemy(window, player, enemies, "oski", -10, -10);
-                spawn_enemy(window, player, enemies, "oski", 810, -10);
-                spawn_enemy(window, player, enemies, "oski", 810, 610);
-                spawn_enemy(window, player, enemies, "oski", -10, 610);
-                enemies_spawned += 4;
-            }
+        //case 1:
+        //    stage++;
+        //    break;
 
+        //    if (enemies_spawned < levels[1].to_spawn && frame % 180 == 0)
+        //    {
+        //        spawn_enemy(window, player, enemies, "oski", -10, -10);
+        //        spawn_enemy(window, player, enemies, "oski", 810, -10);
+        //        spawn_enemy(window, player, enemies, "oski", 810, 610);
+        //        spawn_enemy(window, player, enemies, "oski", -10, 610);
+        //        enemies_spawned += 4;
+        //    }
+
+        //    break;
+
+        default:
+            if (rand() % 100 == 1 && enemies.size() <= 10)
+            {
+                char* enemy = ENEMY_SEED[rand() % 4];
+                printf("loading %s\n", enemy);
+                enemies.emplace_back(new Enemy(window, player, enemy));
+            }
             break;
         }
-
-        /*if (rand() % 100 == 1 && enemies.size() <= 10)
-        {
-            char* enemy = ENEMY_SEED[rand() % 4];
-            printf("loading %s\n", enemy);
-            enemies.emplace_back(new Enemy(window, player, enemy));
-        }*/
 
         auto& bullets = player.GetBullets();
         for (auto bit = bullets.begin(); bit != bullets.end();)
@@ -211,6 +259,7 @@ int main(int argc, char* argv[])
                 auto& e = *(*it);
 
                 vector2_t pos = b.GetPosition();
+                vector2_t center = b.GetCenter();
                 bool collides = e.Collides(pos);
 
                 if (collides)
@@ -221,13 +270,29 @@ int main(int argc, char* argv[])
 
                 if (collides && e.Hit(player.GetDamage()))
                 {
+                    if (&e == BossManPtr)
+                    {
+                        particles.Explode(center, 500);
+                    }
+
                     it = enemies.erase(it);
-                    particles.Explode(pos);
+                    particles.Explode(center);
 
                     total_kills++;
                     ++kill_count;
                     kill_time = 0;
                     --enemies_left;
+
+                    if (time_till_insanity <= 0)
+                    {
+                        g_OFFSET_X = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
+                        g_OFFSET_Y = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
+                    }
+                    else
+                    {
+                        g_OFFSET_X = 0;
+                        g_OFFSET_Y = 0;
+                    }
                 }
                 else
                 {
@@ -240,6 +305,28 @@ int main(int argc, char* argv[])
             if (!bkill) ++bit;
         }
 
+        for (auto it = parentheses.begin();
+                  it != parentheses.end(); )
+        {
+            Bullet* bullet = *it;
+            if (bullet->Collides(player.GetRect()))
+            {
+                //player.damage(bullet->GetDamage());
+                it = parentheses.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        if (currentPowerup && currentPowerup->Collides(player.GetRect()))
+        {
+            player.AddPowerUp(currentPowerupType);
+            currentPowerup = nullptr;
+            currentPowerupType = PowerUp::NONE;
+        }
+
         if (kill_time++ > 60)
         {
             DoubleText.Resize(vector2_t(128, 32));
@@ -249,9 +336,20 @@ int main(int argc, char* argv[])
             kill_time = 0;
         }
 
-        if (time_till_build <= 0 && kill_count >= 2)
+        if (rand() % 500 == 1 && currentPowerup == nullptr)
         {
-            clear_color = SDL_Color { rand() % 255, rand() % 255, rand() % 255 };
+            currentPowerupType = static_cast<PowerUp>(rand() % 3);
+            currentPowerup = POWER_UPS[currentPowerupType];
+            vector2_t pos(100 + (rand() % 600), 100 + (rand() % 400));
+            printf("powerup spawned: %d @ %d,%d\n",
+                   static_cast<int>(currentPowerupType), pos.x, pos.y); 
+            currentPowerup->Move(pos);
+        }
+
+
+        if (time_till_build <= 0 && count % 20 == 0)
+        {
+            clear_color = SDL_Color{ rand() % 255, rand() % 255, rand() % 255 };
         }
 
         window.Clear(clear_color.r, clear_color.g, clear_color.b);
@@ -262,17 +360,6 @@ int main(int argc, char* argv[])
         if (time_till_insanity <= 0)
         {
             BossMan.Enable();
-
-            if (kill_count == 1)
-            {
-                g_OFFSET_X = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
-                g_OFFSET_Y = ((rand() % 1 == 1) ? -1 : 1) * (rand() % 5);
-            }
-            else
-            {
-                g_OFFSET_X = 0;
-                g_OFFSET_Y = 0;
-            }
 
             if (kill_count == 2)
             {
@@ -375,13 +462,34 @@ int main(int argc, char* argv[])
         player.Update();
 
         for (auto& i : enemies)
-            i->Update();
-        BossMan.Update();
+            i->Update(parentheses);
+
+        BossMan.Update(parentheses);
 
         particles.Update();
+
+        if (currentPowerup)
+        {
+            currentPowerup->Draw();
+        }
+
+        if (exploding)
+        {
+            explosion.Resize(vector2_t(explosion.GetWidth() + 10,
+                                       explosion.GetHeight() + 10));
+            explosion.Move(vector2_t(explosion.GetX() - 5, explosion.GetY() - 5));
+
+            if (explosion.GetWidth() > 1000)
+            {
+                exploding = false;
+            }
+
+            explosion.Draw();
+        }
+
         window.Display();
 
-        clear_color = SDL_Color { 255, 255, 255 };
+        //clear_color = SDL_Color { 255, 255, 255 };
 
         uint32_t current_tick = SDL_GetTicks();
         if ((current_tick - frame) < 1000 / MAX_FPS)

@@ -81,9 +81,9 @@ public:
         }
     }
 
-    void Explode(const vector2_t& place)
+    void Explode(const vector2_t& place, unsigned count=50)
     {
-        unsigned count = 50 + (rand() % 100);
+        count = count + (rand() % 100);
 
         for (int i = 0; i < count; ++i)
         {

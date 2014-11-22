@@ -22,6 +22,18 @@ struct Vector2
     T x, y;
     Vector2() : x((T)0), y((T)0) {}
     Vector2(const T& x, const T& y) : x(x), y(y) {}
+
+    void Rotate(float degrees)
+    {
+        float radians = degrees * 180.0f / 3.141592654f;
+        float c = cos(radians);
+        float s = sin(radians);
+
+        float old_x = x;
+
+        x = x * c - y * s;
+        y = old_x * s + y * c;
+    }
 };
 
 struct rect_t

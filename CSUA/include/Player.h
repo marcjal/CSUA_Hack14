@@ -1,10 +1,20 @@
 #pragma once
 
 #include <list>
+#include <algorithm>
 
 #include "Entity.h"
 #include "Bullet.h"
 
+enum class PowerUp
+{
+    MULTI_SHOT = 0,
+    BULLET_HELL,
+    BOMB,
+    NONE
+};
+
+class Enemy;
 class Player
 {
     int SPEED = 10;
@@ -33,8 +43,10 @@ public:
         }
     }
 
-    bool HandleEvent(const SDL_Event& evt)
+    int HandleEvent(const SDL_Event& evt)
     {
+        int retval = 0;
+
         switch (evt.type)
         {
         case SDL_KEYDOWN:
@@ -78,6 +90,10 @@ public:
             case SDLK_RIGHT:
                 m_velocity.x = 0;
                 break;
+
+            case SDLK_b:
+                retval = 1;
+                break;
             }
             break;
 
@@ -99,7 +115,7 @@ public:
             break;
         }
 
-        return true;
+        return retval;
     }
 
     void Move(const vector2_t& pos)
@@ -109,6 +125,21 @@ public:
 
     void Shoot(const vector2_t& pos)
     {
+        if (this->HasPowerup(PowerUp::MULTI_SHOT))
+        {
+            vector2_t target = pos;
+            Bullet* left = new Bullet(m_Sprite.GetWindow());
+            Bullet* rite = new Bullet(m_Sprite.GetWindow());
+
+            target.Rotate(5);
+            left->ShootAt(m_Sprite.GetCenter(), target);
+            target.Rotate(-10);
+            rite->ShootAt(m_Sprite.GetCenter(), target);
+
+            m_Bullets.emplace_back(left);
+            m_Bullets.emplace_back(rite);
+        }
+
         Bullet* bullet = new Bullet(m_Sprite.GetWindow());
         bullet->ShootAt(m_Sprite.GetCenter(), pos);
         m_Bullets.emplace_back(bullet);
@@ -154,6 +185,17 @@ public:
         return m_Sprite.Draw();
     }
 
+    void AddPowerUp(const PowerUp& p)
+    {
+        m_Powerups.emplace_back(p);
+    }
+
+    rect_t GetRect() const
+    {
+        return rect_t(this->GetX(), this->GetY(),
+                      m_Sprite.GetWidth(), m_Sprite.GetHeight());
+    }
+
     std::list<Bullet*>& GetBullets()
     {
         return m_Bullets;
@@ -164,10 +206,31 @@ public:
         return m_DAMAGE;
     }
 
+    bool HasPowerup(const PowerUp& p) const
+    {
+        return m_Powerups.end() != std::find(m_Powerups.begin(), m_Powerups.end(), p);
+    }
+
+    void RemovePowerup(const PowerUp& p)
+    {
+        for (auto it  = m_Powerups.begin();
+                  it != m_Powerups.end(); ++it)
+        {
+            if (*it == p)
+            {
+                m_Powerups.erase(it);
+                break;
+            }
+        }
+    }
+
     const int GetX() const { return m_Sprite.GetPosition().x; }
     const int GetY() const { return m_Sprite.GetPosition().y; }
 
+    friend class Enemy;
+
 private:
+    std::vector<PowerUp> m_Powerups;
     std::list<Bullet*> m_Bullets;
     Entity m_Sprite;
     vector2_t m_velocity;
