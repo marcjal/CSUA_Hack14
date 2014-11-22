@@ -3,6 +3,7 @@
 #include <map>
 #include <ctime>
 #include <sstream>
+#include <iomanip>
 
 #include "SDL2/SDL_ttf.h"
 #pragma comment(lib, "SDL2_ttf.lib")
@@ -114,6 +115,7 @@ int main(int argc, char* argv[])
 
     Entity powerupUI(window, "null");
     Entity killUI(window, "null");
+    Entity scoreUI(window, "null");
 
     FontStream fs;
 
@@ -125,8 +127,12 @@ int main(int argc, char* argv[])
     killUI.SetTexture(fs.Render(uiFont, window, { 255, 255, 255 }));
     fs.Clear();
 
+    fs << "4.0 GPA";
+    scoreUI.SetTexture(fs.Render(uiFont, window, { 255, 255, 255 }));
+    fs.Clear();
+
     SDL_Surface* surf = TTF_RenderText_Blended(font, "DOUBLE KILL", {
-        rand() % 255, rand() % 255, rand() % 255
+        150 + (rand() % 105), 150 + (rand() % 105), 150 + (rand() % 105)
     });
     if (!surf) printf("error: %s\n", TTF_GetError());
     Entity DoubleText(window, "null");
@@ -134,7 +140,7 @@ int main(int argc, char* argv[])
     DoubleText.Move(vector2_t(300, 200));
 
     surf = TTF_RenderText_Blended(font, "TRIPLE KILL", {
-        rand() % 255, rand() % 255, rand() % 255
+        150 + (rand() % 105), 150 + (rand() % 105), 150 + (rand() % 105)
     });
     if (!surf) printf("error: %s\n", TTF_GetError());
     Entity TripleText(window, "null");
@@ -142,7 +148,7 @@ int main(int argc, char* argv[])
     TripleText.Move(vector2_t(300, 200));
 
     surf = TTF_RenderText_Blended(font, "M-M-M-MULTI KILL", {
-        rand() % 255, rand() % 255, rand() % 255
+        150 + (rand() % 105), 150 + (rand() % 105), 150 + (rand() % 105)
     });
     if (!surf) printf("error: %s\n", TTF_GetError());
     Entity MultiText(window, "null");
@@ -181,7 +187,8 @@ int main(int argc, char* argv[])
         "oski",
         "john",
         "hilf",
-        "dan"
+        "dan",
+        "tree"
     };
 
     std::map<PowerUp, Entity*> POWER_UPS = {
@@ -196,6 +203,7 @@ int main(int argc, char* argv[])
         { -1 }
     };
 
+    float gpa = 4.0f;
     int stage = 0;
     int enemies_left = levels[0].to_spawn;
     int enemies_spawned = 0;
@@ -321,7 +329,7 @@ int main(int argc, char* argv[])
         case 70:
             if (rand() % 60 == 1 && enemies.size() <= 10)
             {
-                char* enemy = ENEMY_SEED[rand() % 4];
+                char* enemy = ENEMY_SEED[rand() % 5];
                 enemies.emplace_back(new Enemy(window, player, enemy));
             }
             break;
@@ -337,7 +345,7 @@ int main(int argc, char* argv[])
 
         if (trigger)
         {
-            char* enemy = ENEMY_SEED[rand() % 4];
+            char* enemy = ENEMY_SEED[rand() % 5];
             enemies.emplace_back(new Enemy(window, player, enemy));
         }
 
@@ -411,6 +419,15 @@ int main(int argc, char* argv[])
             else
             {
                 ++it;
+            }
+        }
+
+        for (auto& i : enemies)
+        {
+            if (i->Collides(player.GetRect()))
+            {
+                gpa -= static_cast<double>(i->m_DAMAGE);
+                gpa = std::max(gpa, 3.0f);
             }
         }
 
@@ -615,6 +632,12 @@ int main(int argc, char* argv[])
         fs.Clear();
         killUI.Move(vector2_t(0, UI_LINE_HEIGHT));
         killUI.Draw();
+
+        fs << std::fixed << std::setprecision(3) << gpa << " GPA";
+        scoreUI.SetTexture(fs.Render(uiFont, window, { 255, 255, 255 }));
+        fs.Clear();
+        scoreUI.Move(vector2_t(0, 2*UI_LINE_HEIGHT));
+        scoreUI.Draw();
 
         window.Display();
 

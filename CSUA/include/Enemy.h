@@ -8,6 +8,7 @@ class Enemy : public Entity
 public:
     int m_SPEED = 3;
     int m_HEALTH = 100;
+    float m_DAMAGE = 0.01f;
     string_t m_enemy_type;
 
     Enemy(const graphics::Window& win,
@@ -52,6 +53,13 @@ public:
 
         this->SetHealth(m_HEALTH);
         m_HealthBar.Move(vector2_t(x, y - 6));
+
+        if (type == "hilf")
+            m_DAMAGE = 0.05f;
+        else if (type == "oski")
+            m_DAMAGE = 0.001f;
+        else if (type == "john")
+            m_DAMAGE = 0.025f;
     }
 
     bool Hit(const int damage)
