@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
     TTF_Init();
     IMG_Init(IMG_INIT_PNG);
     Mix_Init(MIX_INIT_MP3);
-    Mix_OpenAudio(44000, MIX_DEFAULT_FORMAT, 2, 1024);
+    Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 1024);
 
     graphics::Window window;
     window.Init({ 800, 600 });
@@ -80,7 +80,8 @@ int main(int argc, char* argv[])
     uint32_t kill_count = 0;
     uint32_t total_kills = 0;
 
-    TTF_Font* font = TTF_OpenFont("comic.ttf", 20);
+    TTF_Font* font  = TTF_OpenFont("comic.ttf", 20);
+    TTF_Font* uiFont= TTF_OpenFont("comic.ttf", 18);
 
     SDL_Surface* surf = TTF_RenderText_Blended(font, "DOUBLE KILL", {
         rand() % 255, rand() % 255, rand() % 255
@@ -122,14 +123,14 @@ int main(int argc, char* argv[])
     Enemy& BossMan = *BossManPtr;
     BossMan.m_HEALTH *= 10;
     BossMan.m_SPEED = 1;
-    BossMan.Move(vector2_t(1000, 200));
+    BossMan.Move(vector2_t(800, 200));
     BossMan.Resize(vector2_t(200, 200));
     BossMan.SetHealth(BossMan.m_HEALTH);
     BossMan.Disable();
 
     enemies.push_back(BossManPtr);
 
-    int time_till_build = 3650;
+    int time_till_build = 4000;
     int time_till_insanity = 4700;
     int count = 0;
 
@@ -185,19 +186,11 @@ int main(int argc, char* argv[])
             int retval = player.HandleEvent(e);
 
             // bomb triggered
-            if (retval == 1)
+            if (retval == 1 && !exploding)
             {
                 exploding = true;
-                explosion.Resize(vector2_t(64, 64));
-                explosion.Move(vector2_t(player.GetX() + 32, player.GetY() + 30));
-
-                for (auto& i : enemies)
-                {
-                    particles.Explode(i->GetCenter());
-                    //delete i;
-                }
-
-                enemies.clear();
+                explosion.Resize(vector2_t(64, 60));
+                explosion.Move(vector2_t(player.GetX(), player.GetY()));
             }
         }
 
@@ -346,8 +339,7 @@ int main(int argc, char* argv[])
             currentPowerup->Move(pos);
         }
 
-
-        if (time_till_build <= 0 && count % 20 == 0)
+        if (time_till_build <= 0 && count % 24 == 0)
         {
             clear_color = SDL_Color{ rand() % 255, rand() % 255, rand() % 255 };
         }
@@ -359,6 +351,7 @@ int main(int argc, char* argv[])
 
         if (time_till_insanity <= 0)
         {
+            printf("Bass? Dropped.\n");
             BossMan.Enable();
 
             if (kill_count == 2)
@@ -464,8 +457,6 @@ int main(int argc, char* argv[])
         for (auto& i : enemies)
             i->Update(parentheses);
 
-        BossMan.Update(parentheses);
-
         particles.Update();
 
         if (currentPowerup)
@@ -479,9 +470,28 @@ int main(int argc, char* argv[])
                                        explosion.GetHeight() + 10));
             explosion.Move(vector2_t(explosion.GetX() - 5, explosion.GetY() - 5));
 
-            if (explosion.GetWidth() > 1000)
+            if (explosion.GetWidth() > 1500)
             {
                 exploding = false;
+            }
+            
+
+            for (auto it = enemies.begin(); it != enemies.end();)
+            {
+                Enemy* i = *it;
+
+                if (i != BossManPtr &&
+                    i->Collides(rect_t(explosion.GetX(), explosion.GetY(),
+                                       explosion.GetWidth(), explosion.GetHeight())))
+                {
+                    particles.Explode(i->GetCenter());
+                    delete i;
+                    it = enemies.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
             }
 
             explosion.Draw();

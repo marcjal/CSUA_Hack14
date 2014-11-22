@@ -8,6 +8,14 @@ public:
     Particle(const graphics::Window& window,
              const vector2_t& start) : Entity(window, "null")
     {
+        vector2_t offset(rand() % 10, rand() % 10);
+        
+        if (rand() % 1 == 0)
+            offset.x *= -1;
+        
+        if (rand() % 1 == 0)
+            offset.y *= -1; 
+        
         this->Move(start);
     }
 
@@ -20,21 +28,21 @@ public:
         bool neg = (rand() % 2) == 1;
         if (neg)
         {
-            m_velocity.x = -3 - (rand() % 5);
+            m_velocity.x = -1 - (rand() % 10);
         }
         else
         {
-            m_velocity.x = 3 + (rand() % 5);
+            m_velocity.x = 1 + (rand() % 10);
         }
 
         neg = (rand() % 2) == 1;
         if (neg)
         {
-            m_velocity.y = -3 - (rand() % 5);
+            m_velocity.y = -1 - (rand() % 10);
         }
         else
         {
-            m_velocity.y = 3 + (rand() % 5);
+            m_velocity.y = 1 + (rand() % 10);
         }
 
         m_lifetime = (60 * 3) + (rand() % 120);
@@ -64,7 +72,7 @@ public:
 
 private:
     SDL_Color m_color;
-    vector2_t m_velocity;
+    vector2f_t m_velocity;
     int m_lifetime;
 };
 

@@ -92,7 +92,12 @@ public:
                 break;
 
             case SDLK_b:
-                retval = 1;
+                if (this->HasPowerup(PowerUp::BOMB))
+                {
+                    this->RemovePowerup(PowerUp::BOMB);
+                    retval = 1;
+                }
+
                 break;
             }
             break;
