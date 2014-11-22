@@ -4,7 +4,7 @@
 
 class Bullet : public Entity
 {
-    const int SPEED = 5;
+    const int SPEED = 10;
 
 public:
     Bullet(const graphics::Window& window) : Entity(window, "bullet")

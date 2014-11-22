@@ -1,16 +1,27 @@
 #pragma once
 
+#include <list>
+
 #include "Entity.h"
 #include "Bullet.h"
 
 class Player
 {
-    const int SPEED = 5;
+    int SPEED = 5;
+    unsigned m_SHOT_DELAY = 1;
+    unsigned m_DAMAGE = 25;
+
+    enum class PlayerStates
+    {
+        e_MOVING = 0,
+        e_SHOOTING = 1
+    };
 
 public:
     Player(graphics::Window& window) : m_Sprite(window, "player")
     {
         m_Sprite.Init();
+        m_state = PlayerStates::e_MOVING;
     }
 
     ~Player()
@@ -69,6 +80,20 @@ public:
             }
             break;
 
+        case SDL_MOUSEBUTTONDOWN:
+            if (evt.button.button == SDL_BUTTON_LEFT)
+            {
+                m_state = PlayerStates::e_SHOOTING;
+            }
+            break;
+
+        case SDL_MOUSEBUTTONUP:
+            if (evt.button.button == SDL_BUTTON_LEFT)
+            {
+                m_state = PlayerStates::e_MOVING;
+            }
+            break;
+
         default:
             break;
         }
@@ -85,13 +110,41 @@ public:
     {
         Bullet* bullet = new Bullet(m_Sprite.GetWindow());
         bullet->ShootAt(m_Sprite.GetCenter(), pos);
-        printf("Shooting from %d,%d at %d,%d\n", m_Sprite.GetPosition().x, m_Sprite.GetPosition().y, pos.x, pos.y);
         m_Bullets.emplace_back(bullet);
     }
 
     bool Update()
     {
+        if (m_state == PlayerStates::e_SHOOTING && m_delay++ > m_SHOT_DELAY)
+        {
+            int x = 0, y = 0;
+            SDL_GetMouseState(&x, &y);
+            this->Shoot({ x, y });
+            m_delay = 0;
+        }
+
         m_Sprite.Adjust(m_velocity);
+
+        for (auto it  = m_Bullets.begin();
+                  it != m_Bullets.end(); )
+        {
+            Bullet* bPtr = *it;
+            Bullet& bullet = *bPtr;
+
+            if (bullet.GetPosition().x < -10 ||
+                bullet.GetPosition().x > 810 ||
+                bullet.GetPosition().y < -10 ||
+                bullet.GetPosition().y > 610)
+            {
+                delete bPtr;
+                it = m_Bullets.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
         for (auto& i : m_Bullets)
         {
             i->Update();
@@ -100,8 +153,23 @@ public:
         return m_Sprite.Draw();
     }
 
+    std::list<Bullet*>& GetBullets()
+    {
+        return m_Bullets;
+    }
+
+    unsigned GetDamage() const
+    {
+        return m_DAMAGE;
+    }
+
+    const int GetX() const { return m_Sprite.GetPosition().x; }
+    const int GetY() const { return m_Sprite.GetPosition().y; }
+
 private:
-    std::vector<Bullet*> m_Bullets;
+    std::list<Bullet*> m_Bullets;
     Entity m_Sprite;
     vector2_t m_velocity;
+    PlayerStates m_state;
+    int m_delay;
 };

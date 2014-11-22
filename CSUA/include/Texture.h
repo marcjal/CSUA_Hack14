@@ -9,28 +9,59 @@ namespace graphics
     class Texture
     {
     public:
-        Texture(const Window& Window) : m_Window(Window) {}
+        Texture(const Window& Window) : m_Window(Window), m_Texture(nullptr) {}
+
+        ~Texture()
+        {
+            if (m_Texture)
+            {
+                SDL_DestroyTexture(m_Texture);
+            }
+        }
 
         bool Init(const string_t& filename)
         {
             m_filename = filename;
-            m_Texture = IMG_LoadTexture(m_Window.GetRenderer(), filename.c_str());
-            if (m_Texture == nullptr) return false;
-            SDL_QueryTexture(m_Texture, nullptr, nullptr, &m_size.x, &m_size.y);
-
+            SDL_Texture* textPtr = IMG_LoadTexture(m_Window.GetRenderer(), filename.c_str());
+            if (textPtr == nullptr) return false;
+            this->SetTexture(textPtr);
             return true;
         }
 
         bool DrawAt(const vector2_t& position) const
         {
+            if (!m_Texture) return false;
+
             SDL_Rect rect = {
-                position.x, position.y,
+                position.x + g_OFFSET_X,
+                position.y + g_OFFSET_Y,
                 m_size.x, m_size.y
             };
 
             SDL_Renderer* rendererPtr = m_Window.GetRenderer();
-            SDL_RenderCopy(rendererPtr, m_Texture, nullptr, &rect);
+            if (SDL_RenderCopy(rendererPtr, m_Texture, nullptr, &rect) < 0)
+            {
+                printf("error: %s\n", SDL_GetError());
+            }
+
             return true;
+        }
+
+        void Resize(const vector2_t& size)
+        {
+            m_size = size;
+        }
+
+        void SetTexture(SDL_Texture* texture)
+        {
+            if (texture)
+            {
+                SDL_DestroyTexture(m_Texture);
+                m_Texture = nullptr;
+            }
+
+            m_Texture = texture;
+            SDL_QueryTexture(m_Texture, nullptr, nullptr, &m_size.x, &m_size.y);
         }
 
         const vector2_t& GetSize() const
